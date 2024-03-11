@@ -1,5 +1,8 @@
 package com.example.mediapermission
 
+import android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
+import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VIDEO
@@ -22,9 +25,13 @@ class MainActivity : AppCompatActivity() {
     private val readExternal = READ_EXTERNAL_STORAGE
     private val readImage = READ_MEDIA_IMAGES
     private  val readVideo = READ_MEDIA_VIDEO
-    //private  val readMediaVisual = READ_MEDIA_VISUAL_USER_SELECTED
-
     private val permissions = arrayOf(readImage,readVideo)
+
+    private val foregroundLocation = ACCESS_COARSE_LOCATION
+   // private val backgroundLocation = ACCESS_BACKGROUND_LOCATION
+    private val fineLocation = ACCESS_FINE_LOCATION
+    private val locationPermission = arrayOf(foregroundLocation,fineLocation)
+
 
     private lateinit var binding: ActivityMainBinding
 
@@ -40,13 +47,16 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        binding.btnMediaPermission.setOnClickListener {
-            requestPermissions()
+        binding.ivMediaPermission.setOnClickListener {
+            requestMediaPermissions()
+        }
+        binding.ivLocationPermission.setOnClickListener{
+            requestLocationPermission()
         }
     }
 
 
-    private fun requestPermissions(){
+    private fun requestMediaPermissions(){
         //check the API level
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
             //filter permissions array in order to get permissions that have not been granted
@@ -116,6 +126,46 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Read external storage permission granted", Toast.LENGTH_SHORT).show()
         }else{
             Toast.makeText(this, "Read external storage permission denied!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+    private fun requestLocationPermission(){
+        val notGrantedPermissions=locationPermission.filterNot { permission->
+            ContextCompat.checkSelfPermission(this,permission) == PackageManager.PERMISSION_GRANTED
+        }
+        if (notGrantedPermissions.isNotEmpty()){
+            //check if permission was previously denied and return a boolean value
+            val showRationale=notGrantedPermissions.any { permission->
+                shouldShowRequestPermissionRationale(permission)
+            }
+            //if true, explain to user why granting this permission is important
+            if (showRationale){
+                AlertDialog.Builder(this)
+                    .setTitle("Location Permission")
+                    .setMessage("Location permission is needed in order to locate you")
+                    .setNegativeButton("Cancel"){dialog,_->
+                        Toast.makeText(this, "Location permission denied!", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                    }
+                    .setPositiveButton("OK"){_,_->
+                        locationPermissionRequest.launch(notGrantedPermissions.toTypedArray())
+                    }
+                    .show()
+            }else{
+                //launch the videoPermission ActivityResultContract
+                locationPermissionRequest.launch(notGrantedPermissions.toTypedArray())
+            }
+        }else{
+            Toast.makeText(this, "Location permission granted", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val locationPermissionRequest=registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){ permissionMap->
+        if (permissionMap.all { it.value }){
+            Toast.makeText(this, "Location permissions granted", Toast.LENGTH_SHORT).show()
+        }else{
+            Toast.makeText(this, "Location permissions not granted!", Toast.LENGTH_SHORT).show()
         }
     }
 
